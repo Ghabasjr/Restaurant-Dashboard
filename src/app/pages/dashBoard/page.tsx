@@ -21,11 +21,25 @@ import {
     CartesianGrid,
     ResponsiveContainer,
 } from "recharts";
+import firebase from "firebase/compat/app";
+
+// ✅ Interfaces
+interface User {
+    id: string;
+    name?: string;
+    email: string;
+    createdAt?: firebase.firestore.Timestamp; // Firestore timestamp
+}
+
+interface ChartData {
+    date: string;
+    count: number;
+}
 
 export default function Dashboard() {
     const router = useRouter();
-    const [users, setUsers] = useState<any[]>([]);
-    const [chartData, setChartData] = useState<any[]>([]);
+    const [users, setUsers] = useState<User[]>([]);
+    const [chartData, setChartData] = useState<ChartData[]>([]);
 
     // ✅ Protect route + fetch users
     useEffect(() => {
@@ -35,15 +49,15 @@ export default function Dashboard() {
 
         const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
         const unsubscribeUsers = onSnapshot(q, (snapshot) => {
-            const data = snapshot.docs.map((doc) => ({
+            const data: User[] = snapshot.docs.map((doc) => ({
                 id: doc.id,
-                ...doc.data(),
+                ...(doc.data() as Omit<User, "id">), // 👈 ensures typing matches User
             }));
             setUsers(data);
 
             // Build chart data (users per day)
             const grouped: Record<string, number> = {};
-            data.forEach((u: any) => {
+            data.forEach((u) => {
                 if (u.createdAt) {
                     const date = u.createdAt.toDate().toLocaleDateString();
                     grouped[date] = (grouped[date] || 0) + 1;
@@ -59,7 +73,7 @@ export default function Dashboard() {
             unsubscribeAuth();
             unsubscribeUsers();
         };
-    }, []);
+    }, [router]);
 
     // ✅ Logout
     const handleLogout = async () => {
@@ -131,7 +145,7 @@ export default function Dashboard() {
                     👥 Registered Users
                 </h3>
                 <ul className="space-y-3">
-                    {users.map((user: any) => (
+                    {users.map((user) => (
                         <li
                             key={user.id}
                             className="flex justify-between items-center bg-gray-50 hover:bg-gray-100 p-4 rounded-lg shadow-sm"

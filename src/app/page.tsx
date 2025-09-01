@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "./firebaseConfig";
+import { FirebaseError } from "firebase/app";
 import { useRouter } from "next/navigation";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 
@@ -12,23 +13,30 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false); // ✅ loading state
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true); // start loading
+    setError(""); // clear previous error
     try {
       await signInWithEmailAndPassword(auth, email, password);
       router.push("/pages/dashBoard");
-    } catch (err: any) {
-      console.error("Login error:", err.code, err.message);
-      if (err.code === "auth/user-not-found") {
+    } catch (err) {
+      const error = err as FirebaseError;
+      console.error("Login error:", error.code, error.message);
+
+      if (error.code === "auth/user-not-found") {
         setError("No user found with this email");
-      } else if (err.code === "auth/wrong-password") {
+      } else if (error.code === "auth/wrong-password") {
         setError("Incorrect password");
-      } else if (err.code === "auth/invalid-email") {
+      } else if (error.code === "auth/invalid-email") {
         setError("Invalid email format");
       } else {
         setError("Something went wrong. Try again.");
       }
+    } finally {
+      setLoading(false); // stop loading
     }
   };
 
@@ -94,9 +102,13 @@ export default function LoginPage() {
         {/* Submit Button */}
         <button
           type="submit"
-          className="w-full bg-gradient-to-r from-orange-400 to-yellow-400 text-white py-2 px-4 rounded-lg font-semibold shadow-md hover:from-orange-500 hover:to-yellow-500 transition-all"
+          disabled={loading}
+          className={`w-full py-2 px-4 rounded-lg font-semibold shadow-md transition-all ${loading
+            ? "bg-gray-400 cursor-not-allowed"
+            : "bg-gradient-to-r from-orange-400 to-yellow-400 text-white hover:from-orange-500 hover:to-yellow-500"
+            }`}
         >
-          Login
+          {loading ? "Loading..." : "Login"}
         </button>
       </form>
     </div>
